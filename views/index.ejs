@@ -1,0 +1,761 @@
+<%- include('partials/header') %>
+
+<main class="main-content">
+  <!-- Alerts and Notifications -->
+  <% if (message) { %>
+    <div class="alert alert-success">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+      <div><%= message %></div>
+      <button class="alert-close" onclick="this.parentElement.remove()">&times;</button>
+    </div>
+  <% } %>
+
+  <% if (error) { %>
+    <div class="alert alert-danger">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <div><%= error %></div>
+      <button class="alert-close" onclick="this.parentElement.remove()">&times;</button>
+    </div>
+  <% } %>
+
+  <% if (dbInfo.type === 'mock') { %>
+    <div class="alert alert-info">
+      <div class="info-content">
+        <strong>⚡ Cloud PostgreSQL Ready:</strong> The website is currently displaying the verified 20-row case study dataset. 
+        Connect any free Cloud PostgreSQL database (Neon / Render / Supabase) to persist changes live in the cloud.
+      </div>
+      <button class="btn btn-sm btn-primary" onclick="openCloudModal()">Connect Cloud Database</button>
+    </div>
+  <% } %>
+
+  <!-- SECTION 1: DASHBOARD OVERVIEW -->
+  <section id="dashboard-section" class="content-section">
+    <div class="section-header">
+      <div>
+        <h2 class="section-title">Database Analytics Dashboard</h2>
+        <p class="section-desc">Live statistics queried from PostgreSQL relational tables</p>
+      </div>
+      <div class="section-actions">
+        <button class="btn btn-secondary btn-sm" onclick="runAcidDemo()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          Run ACID Demo
+        </button>
+        <button class="btn btn-primary btn-sm" onclick="openOrderModal()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+          New Order
+        </button>
+      </div>
+    </div>
+
+    <!-- 4 KPI Cards -->
+    <div class="dashboard-grid">
+      <div class="kpi-card card-blue">
+        <div class="kpi-icon">🛍️</div>
+        <div class="kpi-body">
+          <span class="kpi-title">Total Products</span>
+          <h3 class="kpi-number"><%= totalProducts %></h3>
+          <span class="kpi-subtitle">Across 20 categories</span>
+        </div>
+      </div>
+
+      <div class="kpi-card card-emerald">
+        <div class="kpi-icon">👥</div>
+        <div class="kpi-body">
+          <span class="kpi-title">Registered Customers</span>
+          <h3 class="kpi-number"><%= totalCustomers %></h3>
+          <span class="kpi-subtitle">Pan-India coverage</span>
+        </div>
+      </div>
+
+      <div class="kpi-card card-purple">
+        <div class="kpi-icon">📦</div>
+        <div class="kpi-body">
+          <span class="kpi-title">Total Orders</span>
+          <h3 class="kpi-number"><%= totalOrders %></h3>
+          <span class="kpi-subtitle">18 Active &bull; 2 Cancelled</span>
+        </div>
+      </div>
+
+      <div class="kpi-card card-amber">
+        <div class="kpi-icon">₹</div>
+        <div class="kpi-body">
+          <span class="kpi-title">Revenue (Excl. Cancelled)</span>
+          <h3 class="kpi-number">&#8377;<%= money(revenue) %></h3>
+          <span class="kpi-subtitle">Total with cancelled: &#8377;2,57,080.00</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 2: PRODUCT CATALOGUE -->
+  <section id="products-section" class="content-section">
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <h3 class="panel-title">Product Catalogue</h3>
+          <p class="panel-subtitle">Real-time inventory and pricing with SQL parameterized search</p>
+        </div>
+        <span class="badge badge-outline"><%= products.length %> Products Found</span>
+      </div>
+
+      <!-- Search & Category Filter Form -->
+      <form method="GET" action="/#products-section" class="filter-bar">
+        <div class="search-input-wrapper">
+          <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input type="text" name="q" value="<%= search %>" placeholder="Search by product name, brand, or category (e.g. watch, Xiaomi, Canon)..." class="input-search">
+          <% if (search) { %>
+            <a href="/#products-section" class="clear-search">&times;</a>
+          <% } %>
+        </div>
+
+        <select name="category" class="select-category" onchange="this.form.submit()">
+          <option value="">All Categories (20)</option>
+          <% categories.forEach(c => { %>
+            <option value="<%= c.category_id %>" <%= categoryFilter == c.category_id ? 'selected' : '' %>>
+              <%= c.category_name %>
+            </option>
+          <% }) %>
+        </select>
+
+        <button type="submit" class="btn btn-primary">Search</button>
+      </form>
+
+      <!-- Products Table -->
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>SKU</th>
+              <th>Product Name</th>
+              <th>Brand</th>
+              <th>Category</th>
+              <th>Price</th>
+              <th>Stock Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if (products.length === 0) { %>
+              <tr>
+                <td colspan="8" class="text-center py-6 text-muted">No products found matching "<%= search %>". Try another keyword.</td>
+              </tr>
+            <% } %>
+            <% products.forEach(p => { %>
+              <tr>
+                <td><strong>#<%= p.product_id %></strong></td>
+                <td><span class="code-sku"><%= p.sku %></span></td>
+                <td>
+                  <strong><%= p.product_name %></strong>
+                </td>
+                <td><span class="badge badge-brand"><%= p.brand %></span></td>
+                <td><%= p.category_name %></td>
+                <td><strong>&#8377;<%= money(p.price) %></strong></td>
+                <td>
+                  <% if (p.stock_qty > 20) { %>
+                    <span class="badge badge-success">&#10003; <%= p.stock_qty %> in stock</span>
+                  <% } else if (p.stock_qty > 0) { %>
+                    <span class="badge badge-warning">&#9888; Only <%= p.stock_qty %> left</span>
+                  <% } else { %>
+                    <span class="badge badge-danger">Out of stock</span>
+                  <% } %>
+                </td>
+                <td>
+                  <button class="btn btn-xs btn-outline" onclick="orderProduct(<%= p.product_id %>, '<%= p.product_name.replace(/'/g, "\\'") %>', <%= p.price %>)">
+                    Order
+                  </button>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 3: RECENT ORDERS -->
+  <section id="orders-section" class="content-section">
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <h3 class="panel-title">Recent Orders</h3>
+          <p class="panel-subtitle">Joined via <code>v_order_summary</code> database view</p>
+        </div>
+        <!-- Status Filter Pills -->
+        <div class="filter-pills">
+          <a href="/#orders-section" class="pill <%= !statusFilter ? 'active' : '' %>">All</a>
+          <a href="/?status=Placed#orders-section" class="pill <%= statusFilter === 'Placed' ? 'active' : '' %>">Placed</a>
+          <a href="/?status=Shipped#orders-section" class="pill <%= statusFilter === 'Shipped' ? 'active' : '' %>">Shipped</a>
+          <a href="/?status=Delivered#orders-section" class="pill <%= statusFilter === 'Delivered' ? 'active' : '' %>">Delivered</a>
+          <a href="/?status=Cancelled#orders-section" class="pill <%= statusFilter === 'Cancelled' ? 'active' : '' %>">Cancelled</a>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Order ID</th>
+              <th>Customer</th>
+              <th>Order Date</th>
+              <th>Line Items</th>
+              <th>Total Amount</th>
+              <th>Order Status</th>
+              <th>Payment Info</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if (orders.length === 0) { %>
+              <tr>
+                <td colspan="8" class="text-center py-6 text-muted">No orders found with status "<%= statusFilter %>".</td>
+              </tr>
+            <% } %>
+            <% orders.forEach(o => { %>
+              <tr>
+                <td><strong>#<%= o.order_id %></strong></td>
+                <td><%= o.full_name %></td>
+                <td><%= o.order_date %></td>
+                <td>
+                  <span class="badge badge-secondary"><%= o.line_items %> <%= o.line_items == 1 ? 'item' : 'items' %></span>
+                </td>
+                <td><strong>&#8377;<%= money(o.total_amount) %></strong></td>
+                <td>
+                  <span class="badge badge-<%= o.order_status.toLowerCase() %>"><%= o.order_status %></span>
+                </td>
+                <td>
+                  <span class="payment-badge">
+                    <span class="pay-method"><%= o.payment_method %></span>
+                    <span class="pay-status status-<%= (o.payment_status || '').toLowerCase() %>"><%= o.payment_status %></span>
+                  </span>
+                </td>
+                <td>
+                  <div class="table-actions">
+                    <button class="btn btn-xs btn-secondary" onclick="viewOrderItems(<%= o.order_id %>, '<%= o.full_name.replace(/'/g, "\\'") %>', '<%= o.total_amount %>')">
+                      Items
+                    </button>
+                    <!-- Quick status update dropdown -->
+                    <form method="POST" action="/orders/<%= o.order_id %>/status" class="inline-form">
+                      <select name="status" class="select-sm" onchange="this.form.submit()">
+                        <option value="Placed" <%= o.order_status === 'Placed' ? 'selected' : '' %>>Placed</option>
+                        <option value="Shipped" <%= o.order_status === 'Shipped' ? 'selected' : '' %>>Shipped</option>
+                        <option value="Delivered" <%= o.order_status === 'Delivered' ? 'selected' : '' %>>Delivered</option>
+                        <option value="Cancelled" <%= o.order_status === 'Cancelled' ? 'selected' : '' %>>Cancelled</option>
+                      </select>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 4: CUSTOMER MANAGEMENT -->
+  <section id="customers-section" class="content-section">
+    <div class="panel-grid-2">
+      <!-- Register Customer Form -->
+      <div class="panel">
+        <div class="panel-header">
+          <div>
+            <h3 class="panel-title">Register New Customer</h3>
+            <p class="panel-subtitle">Demonstrates INSERT with UNIQUE and NOT NULL constraints</p>
+          </div>
+        </div>
+        <form method="POST" action="/customers/add" class="form-grid">
+          <div class="form-group">
+            <label>Full Name *</label>
+            <input type="text" name="full_name" placeholder="e.g. Vedant Chaudhari" required>
+          </div>
+          <div class="form-group">
+            <label>Email Address (Unique) *</label>
+            <input type="email" name="email" placeholder="e.g. vedant@example.com" required>
+          </div>
+          <div class="form-group">
+            <label>Phone Number (Unique)</label>
+            <input type="text" name="phone" placeholder="e.g. 9820212345" pattern="[0-9]{10}">
+          </div>
+          <div class="form-row-2">
+            <div class="form-group">
+              <label>City *</label>
+              <input type="text" name="city" placeholder="e.g. Nagpur" required>
+            </div>
+            <div class="form-group">
+              <label>State *</label>
+              <input type="text" name="state" placeholder="e.g. Maharashtra" required>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">Save Customer</button>
+        </form>
+      </div>
+
+      <!-- Customers Quick Table -->
+      <div class="panel">
+        <div class="panel-header">
+          <div>
+            <h3 class="panel-title">Registered Customers (<%= customers.length %>)</h3>
+            <p class="panel-subtitle">Referenced by orders table via Foreign Key</p>
+          </div>
+        </div>
+        <div class="table-responsive max-h-350">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>City</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% customers.forEach(c => { %>
+                <tr>
+                  <td><strong>#<%= c.customer_id %></strong></td>
+                  <td><%= c.full_name %></td>
+                  <td><small><%= c.email %></small></td>
+                  <td><%= c.city %></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 5: DBMS LABORATORY & QUERY RUNNER -->
+  <section id="queries-section" class="content-section">
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <h3 class="panel-title">DBMS Case Study SQL Lab (Sections 8.1 - 8.10)</h3>
+          <p class="panel-subtitle">Execute all queries from your case study report directly against PostgreSQL in real time</p>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="runAcidDemo()">
+          ⚡ Run ACID Transaction Demo (8.10)
+        </button>
+      </div>
+
+      <!-- Query Selector Buttons -->
+      <div class="queries-grid">
+        <button class="query-btn active" onclick="loadCaseStudyQuery('8.1')">
+          <span class="q-num">8.1</span>
+          <span class="q-title">Display All Products</span>
+        </button>
+        <button class="query-btn" onclick="loadCaseStudyQuery('8.2')">
+          <span class="q-num">8.2</span>
+          <span class="q-title">JOIN Products &amp; Categories</span>
+        </button>
+        <button class="query-btn" onclick="loadCaseStudyQuery('8.3')">
+          <span class="q-num">8.3</span>
+          <span class="q-title">Orders Placed / Shipped</span>
+        </button>
+        <button class="query-btn" onclick="loadCaseStudyQuery('8.4')">
+          <span class="q-num">8.4</span>
+          <span class="q-title">Count Products (LEFT JOIN)</span>
+        </button>
+        <button class="query-btn" onclick="loadCaseStudyQuery('8.5')">
+          <span class="q-num">8.5</span>
+          <span class="q-title">Cancelled Orders Subquery</span>
+        </button>
+        <button class="query-btn" onclick="loadCaseStudyQuery('8.6')">
+          <span class="q-num">8.6</span>
+          <span class="q-title">Total Active Revenue</span>
+        </button>
+        <button class="query-btn" onclick="loadCaseStudyQuery('8.7')">
+          <span class="q-num">8.7</span>
+          <span class="q-title">Top 5 Selling Products</span>
+        </button>
+        <button class="query-btn" onclick="loadCaseStudyQuery('8.8')">
+          <span class="q-num">8.8</span>
+          <span class="q-title">Order Summary View</span>
+        </button>
+        <button class="query-btn" onclick="loadCaseStudyQuery('8.9')">
+          <span class="q-num">8.9</span>
+          <span class="q-title">Non-Ordering Customers</span>
+        </button>
+      </div>
+
+      <!-- Live Query Display Box -->
+      <div class="query-console">
+        <div class="console-header">
+          <div class="console-title" id="query-active-title">8.1 Display All Products</div>
+          <button class="btn btn-xs btn-primary" id="btn-run-query" onclick="executeCurrentQuery()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Execute SQL
+          </button>
+        </div>
+        <p class="console-desc" id="query-active-desc">Retrieves all products ordered by product_id.</p>
+        <pre class="code-block"><code id="query-active-sql">SELECT product_id, product_name, brand, price, stock_qty
+FROM products
+ORDER BY product_id;</code></pre>
+        
+        <!-- Result Box -->
+        <div class="query-result-wrapper">
+          <div class="result-header">
+            <span>Query Results from PostgreSQL:</span>
+            <span id="result-row-count" class="badge badge-outline">Ready</span>
+          </div>
+          <div id="query-result-table" class="table-responsive max-h-300">
+            <p class="text-muted p-4">Click "Execute SQL" to run this statement live against the database.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 6: SCHEMA & ER MODEL -->
+  <section id="schema-section" class="content-section">
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <h3 class="panel-title">Relational Database Schema &amp; ER Architecture</h3>
+          <p class="panel-subtitle">Normalized tables, primary keys, foreign keys, and integrity constraints</p>
+        </div>
+        <span class="badge badge-brand">PostgreSQL Engine</span>
+      </div>
+
+      <!-- Visual ER Model Cards -->
+      <div class="er-diagram-container">
+        <div class="er-entity card-border">
+          <div class="entity-name">CATEGORIES</div>
+          <ul class="entity-fields">
+            <li><span class="pk">PK</span> category_id (SERIAL)</li>
+            <li><span class="uq">UQ</span> category_name (VARCHAR)</li>
+            <li>description (VARCHAR)</li>
+          </ul>
+        </div>
+        <div class="er-arrow">&rarr; 1 : M &rarr;</div>
+        <div class="er-entity card-border">
+          <div class="entity-name">PRODUCTS</div>
+          <ul class="entity-fields">
+            <li><span class="pk">PK</span> product_id (SERIAL)</li>
+            <li><span class="uq">UQ</span> sku (VARCHAR)</li>
+            <li>product_name, brand</li>
+            <li>price, stock_qty</li>
+            <li><span class="fk">FK</span> category_id</li>
+          </ul>
+        </div>
+        <div class="er-arrow">&rarr; 1 : M &rarr;</div>
+        <div class="er-entity card-border">
+          <div class="entity-name">ORDER_ITEMS</div>
+          <ul class="entity-fields">
+            <li><span class="pk">PK</span> order_item_id</li>
+            <li><span class="fk">FK</span> order_id</li>
+            <li><span class="fk">FK</span> product_id</li>
+            <li><span class="uq">UQ</span> (order_id, product_id)</li>
+            <li>quantity, unit_price</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="er-diagram-container mt-4">
+        <div class="er-entity card-border">
+          <div class="entity-name">CUSTOMERS</div>
+          <ul class="entity-fields">
+            <li><span class="pk">PK</span> customer_id (SERIAL)</li>
+            <li><span class="uq">UQ</span> email (VARCHAR)</li>
+            <li><span class="uq">UQ</span> phone (VARCHAR)</li>
+            <li>full_name, city, state</li>
+            <li>registered_on (DATE)</li>
+          </ul>
+        </div>
+        <div class="er-arrow">&rarr; 1 : M &rarr;</div>
+        <div class="er-entity card-border">
+          <div class="entity-name">ORDERS</div>
+          <ul class="entity-fields">
+            <li><span class="pk">PK</span> order_id (SERIAL)</li>
+            <li><span class="fk">FK</span> customer_id</li>
+            <li>order_date, delivery_date</li>
+            <li>order_status, shipping_city</li>
+            <li>total_amount (DECIMAL)</li>
+          </ul>
+        </div>
+        <div class="er-arrow">&rarr; 1 : M &rarr;</div>
+        <div class="er-entity card-border">
+          <div class="entity-name">PAYMENTS</div>
+          <ul class="entity-fields">
+            <li><span class="pk">PK</span> payment_id (SERIAL)</li>
+            <li><span class="fk">FK</span> order_id</li>
+            <li>payment_date, payment_method</li>
+            <li>amount (DECIMAL)</li>
+            <li>payment_status (VARCHAR)</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Constraints Table -->
+      <div class="table-responsive mt-6">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Table Name</th>
+              <th>Primary Key</th>
+              <th>Foreign Keys</th>
+              <th>Integrity Constraints (CHECK / UNIQUE / DEFAULT)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>categories</code></td>
+              <td><code>category_id</code></td>
+              <td>&mdash;</td>
+              <td><code>UNIQUE(category_name)</code>, <code>category_name NOT NULL</code></td>
+            </tr>
+            <tr>
+              <td><code>customers</code></td>
+              <td><code>customer_id</code></td>
+              <td>&mdash;</td>
+              <td><code>UNIQUE(email)</code>, <code>UNIQUE(phone)</code>, <code>DEFAULT CURRENT_DATE</code></td>
+            </tr>
+            <tr>
+              <td><code>products</code></td>
+              <td><code>product_id</code></td>
+              <td><code>category_id &rarr; categories</code></td>
+              <td><code>UNIQUE(sku)</code>, <code>CHECK(price &gt; 0)</code>, <code>CHECK(stock_qty &gt;= 0)</code></td>
+            </tr>
+            <tr>
+              <td><code>orders</code></td>
+              <td><code>order_id</code></td>
+              <td><code>customer_id &rarr; customers</code></td>
+              <td><code>CHECK(order_status IN ('Placed','Shipped','Delivered','Cancelled'))</code>, <code>CHECK(delivery_date &gt;= order_date)</code></td>
+            </tr>
+            <tr>
+              <td><code>order_items</code></td>
+              <td><code>order_item_id</code></td>
+              <td><code>order_id &rarr; orders</code>, <code>product_id &rarr; products</code></td>
+              <td><code>UNIQUE(order_id, product_id)</code>, <code>CHECK(quantity &gt; 0)</code>, <code>CHECK(unit_price &gt; 0)</code></td>
+            </tr>
+            <tr>
+              <td><code>payments</code></td>
+              <td><code>payment_id</code></td>
+              <td><code>order_id &rarr; orders</code></td>
+              <td><code>CHECK(payment_method IN ('UPI','Credit Card','Debit Card','Net Banking','Cash on Delivery'))</code>, <code>CHECK(payment_status IN ('Paid','Pending','Failed','Refunded'))</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 7: CLOUD DEPLOYMENT GUIDE & SETTINGS -->
+  <section id="cloud-section" class="content-section">
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <h3 class="panel-title">Cloud Deployment &amp; Live PostgreSQL Connection</h3>
+          <p class="panel-subtitle">Deploy this system completely to the cloud without any local setup</p>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="resetDatabase()">
+          🔄 Reset to 20 Seed Rows
+        </button>
+      </div>
+
+      <!-- Cloud Status Box -->
+      <div class="cloud-status-banner">
+        <div class="status-icon <%= dbInfo.type === 'postgres' ? 'icon-green' : 'icon-amber' %>">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>
+        </div>
+        <div class="status-details">
+          <h4>Active Database Status: <%= dbInfo.type === 'postgres' ? 'Connected to Cloud PostgreSQL' : 'Demonstration / Preview Mode' %></h4>
+          <p>
+            <strong>Host:</strong> <%= dbInfo.host || 'Not Connected' %> &bull; 
+            <strong>Database:</strong> <%= dbInfo.database || 'vedantchaudhari_ecommerce' %> &bull; 
+            <strong>SSL:</strong> <%= dbInfo.ssl ? 'Enabled (Secure)' : 'Disabled' %>
+          </p>
+        </div>
+      </div>
+
+      <!-- Deployment Instructions Grid -->
+      <div class="deploy-steps-grid">
+        <div class="step-card">
+          <div class="step-num">Step 1</div>
+          <h4>Free Cloud PostgreSQL (Neon.tech)</h4>
+          <p>Create a serverless PostgreSQL database in 30 seconds with 0 configuration and no credit card:</p>
+          <ol>
+            <li>Go to <a href="https://neon.tech" target="_blank" rel="noopener">neon.tech</a> and Sign Up (Free).</li>
+            <li>Create a new project named <code>vedantchaudhari_ecommerce</code>.</li>
+            <li>Copy the <strong>Connection String</strong> (e.g. <code>postgresql://user:pass@ep-xyz.aws.neon.tech/neondb?sslmode=require</code>).</li>
+            <li>Paste it below or set it as <code>DATABASE_URL</code>! The app automatically migrates the schema and inserts all 20 records on startup.</li>
+          </ol>
+        </div>
+
+        <div class="step-card">
+          <div class="step-num">Step 2</div>
+          <h4>Deploy Web App (Render.com)</h4>
+          <p>Host the Node.js website permanently on Render for free:</p>
+          <ol>
+            <li>Create a free account on <a href="https://render.com" target="_blank" rel="noopener">render.com</a>.</li>
+            <li>Click <strong>New &rarr; Web Service</strong> and connect your GitHub repository.</li>
+            <li>Set Environment Variable: <code>DATABASE_URL</code> = <em>Your Neon Connection String</em>.</li>
+            <li>Click <strong>Deploy</strong>. Render will build and deploy the app with a public live URL (e.g. <code>https://vedant-ecommerce.onrender.com</code>)!</li>
+          </ol>
+        </div>
+      </div>
+
+      <!-- Live Connection Form -->
+      <div class="connect-cloud-box">
+        <h4>Connect Live Cloud PostgreSQL Right Now:</h4>
+        <p class="text-muted">You can test or switch to any Cloud PostgreSQL database live right here:</p>
+        <div class="input-group">
+          <input type="text" id="input-cloud-url" placeholder="postgresql://user:password@ep-xyz.aws.neon.tech/vedant_db?sslmode=require" class="input-lg">
+          <button class="btn btn-primary" onclick="connectCloudDb()">Connect &amp; Auto-Migrate</button>
+        </div>
+        <div id="cloud-connect-msg" class="mt-2 text-sm"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- MODAL 1: PLACE ORDER (ACID TRANSACTION DEMO) -->
+<div id="order-modal" class="modal-backdrop">
+  <div class="modal-card">
+    <div class="modal-header">
+      <div>
+        <h3 class="modal-title">Place Order (ACID Transaction)</h3>
+        <p class="modal-subtitle">Executes an atomic checkout transaction in PostgreSQL</p>
+      </div>
+      <button class="modal-close" onclick="closeOrderModal()">&times;</button>
+    </div>
+    <form method="POST" action="/orders/create" class="modal-body form-grid">
+      <div class="form-group">
+        <label>Customer *</label>
+        <select name="customer_id" required>
+          <option value="">Select registered customer...</option>
+          <% customers.forEach(c => { %>
+            <option value="<%= c.customer_id %>">#<%= c.customer_id %> - <%= c.full_name %> (<%= c.city %>)</option>
+          <% }) %>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Product *</label>
+        <select name="product_id" id="modal-product-select" required onchange="updateModalPrice()">
+          <option value="">Select product...</option>
+          <% products.forEach(p => { %>
+            <option value="<%= p.product_id %>" data-price="<%= p.price %>" data-stock="<%= p.stock_qty %>">
+              <%= p.product_name %> (₹<%= money(p.price) %>) - <%= p.stock_qty %> in stock
+            </option>
+          <% }) %>
+        </select>
+      </div>
+
+      <div class="form-row-2">
+        <div class="form-group">
+          <label>Quantity *</label>
+          <input type="number" name="quantity" id="modal-quantity" value="1" min="1" max="100" required oninput="updateModalPrice()">
+        </div>
+        <div class="form-group">
+          <label>Payment Method *</label>
+          <select name="payment_method" required>
+            <option value="UPI">UPI</option>
+            <option value="Credit Card">Credit Card</option>
+            <option value="Debit Card">Debit Card</option>
+            <option value="Net Banking">Net Banking</option>
+            <option value="Cash on Delivery">Cash on Delivery</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Shipping City *</label>
+        <input type="text" name="shipping_city" placeholder="e.g. Nagpur" required>
+      </div>
+
+      <div class="order-total-preview">
+        <span>Order Estimated Total:</span>
+        <strong id="modal-total-display">&#8377;0.00</strong>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeOrderModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Confirm &amp; Place Order</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL 2: VIEW ORDER ITEMS -->
+<div id="items-modal" class="modal-backdrop">
+  <div class="modal-card">
+    <div class="modal-header">
+      <div>
+        <h3 class="modal-title" id="items-modal-title">Order Line Items</h3>
+        <p class="modal-subtitle" id="items-modal-subtitle">Associative entity <code>order_items</code> breakdown</p>
+      </div>
+      <button class="modal-close" onclick="closeItemsModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div id="items-modal-loading" class="text-center py-4">Loading order items...</div>
+      <div id="items-modal-content" class="table-responsive hidden">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>SKU</th>
+              <th>Product Name</th>
+              <th>Category</th>
+              <th>Unit Price</th>
+              <th>Quantity</th>
+              <th>Subtotal</th>
+            </tr>
+          </thead>
+          <tbody id="items-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" onclick="closeItemsModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL 3: CLOUD DB CONNECT -->
+<div id="cloud-modal" class="modal-backdrop">
+  <div class="modal-card">
+    <div class="modal-header">
+      <div>
+        <h3 class="modal-title">Cloud PostgreSQL Connection</h3>
+        <p class="modal-subtitle">Connect live database (Neon, Render, Supabase, RDS)</p>
+      </div>
+      <button class="modal-close" onclick="closeCloudModal()">&times;</button>
+    </div>
+    <div class="modal-body form-grid">
+      <p class="text-muted text-sm">
+        Enter your PostgreSQL connection URL. The application will connect over SSL, run any pending table migrations automatically, and populate the case study seed records if empty.
+      </p>
+      <div class="form-group">
+        <label>Database Connection String (DATABASE_URL)</label>
+        <input type="text" id="modal-cloud-url" placeholder="postgresql://user:password@ep-xyz.aws.neon.tech/neondb?sslmode=require" class="input-lg">
+      </div>
+      <div id="modal-cloud-msg" class="text-sm"></div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" onclick="closeCloudModal()">Cancel</button>
+      <button type="button" class="btn btn-primary" onclick="connectCloudDbFromModal()">Test &amp; Connect</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL 4: ACID DEMO OUTPUT -->
+<div id="acid-modal" class="modal-backdrop">
+  <div class="modal-card modal-lg">
+    <div class="modal-header">
+      <div>
+        <h3 class="modal-title">ACID Transaction Execution Trace (Section 8.10)</h3>
+        <p class="modal-subtitle">Demonstrates Atomicity, Stock Locking, and ROLLBACK behavior</p>
+      </div>
+      <button class="modal-close" onclick="closeAcidModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div id="acid-trace-container" class="trace-box">Running transaction...</div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-primary" onclick="closeAcidModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<%- include('partials/footer') %>
+
