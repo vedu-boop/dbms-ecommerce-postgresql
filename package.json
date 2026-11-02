@@ -1,0 +1,32 @@
+{
+  "name": "ecommerce-management-system",
+  "version": "1.0.0",
+  "description": "E-Commerce Management System - DBMS Case Study (PostgreSQL, Node.js, Express, EJS) by Vedant V Chaudhari (UID: 24010011)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "setup-db": "node setup-cloud-db.js",
+    "test": "node tests/verify.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "dbms",
+    "case-study",
+    "postgresql",
+    "ecommerce",
+    "express",
+    "node",
+    "acid-transactions"
+  ],
+  "author": "Vedant V Chaudhari",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "ejs": "^3.1.10",
+    "express": "^4.21.2",
+    "pg": "^8.13.1"
+  }
+}
