@@ -40,7 +40,10 @@ function ghRequest(method, endpoint, data = null) {
           if (res.statusCode >= 200 && res.statusCode < 300) {
             resolve(parsed);
           } else {
-            reject(new Error(`GitHub API ${res.statusCode}: ${parsed.message || body}`));
+            const err = new Error(`GitHub API ${res.statusCode}: ${parsed.message || body}`);
+            err.statusCode = res.statusCode;
+            err.body = parsed;
+            reject(err);
           }
         } catch (e) {
           resolve(body);
@@ -77,27 +80,25 @@ async function main() {
     const user = await ghRequest('GET', '/user');
     console.log(`👤 Authenticated as: ${user.login} (${user.name || 'User'})`);
 
-    console.log(`\n📦 Creating repository "${repoName}" on GitHub...`);
+    console.log(`\n📦 Checking repository "${repoName}" on GitHub...`);
     let repo;
     try {
-      repo = await ghRequest('POST', '/user/repos', {
-        name: repoName,
-        description: 'E-Commerce Management System (PostgreSQL + Node.js) - DBMS Case Study by Vedant V Chaudhari',
-        private: false,
-        auto_init: true,
-      });
-      console.log(`✅ Repository created: ${repo.html_url}`);
+      repo = await ghRequest('GET', `/repos/${user.login}/${repoName}`);
+      console.log(`ℹ️ Repository "${repoName}" already exists on your account: ${repo.html_url}`);
     } catch (err) {
-      if (err.message.includes('already exists')) {
-        console.log(`ℹ️ Repository "${repoName}" already exists, uploading files...`);
-        repo = await ghRequest('GET', `/repos/${user.login}/${repoName}`);
+      if (err.statusCode === 404) {
+        console.log(`📦 Creating new repository "${repoName}"...`);
+        repo = await ghRequest('POST', '/user/repos', {
+          name: repoName,
+          description: 'E-Commerce Management System (PostgreSQL + Node.js) - DBMS Case Study by Vedant V Chaudhari',
+          private: false,
+          auto_init: true,
+        });
+        console.log(`✅ Repository created: ${repo.html_url}`);
       } else {
         throw err;
       }
     }
-
-    // Wait 2 seconds for initial commit
-    await new Promise(r => setTimeout(r, 2000));
 
     console.log('\n🚀 Uploading project files to GitHub...');
     const projectRoot = __dirname;
@@ -134,4 +135,3 @@ async function main() {
 }
 
 main();
-
