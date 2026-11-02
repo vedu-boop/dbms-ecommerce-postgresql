@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>E-Commerce Management System | DBMS Case Study - Vedant V Chaudhari</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Academic Top Banner -->
+  <div class="academic-banner">
+    <div class="banner-container">
+      <div class="banner-left">
+        <span class="badge-college">SPCEET IT</span>
+        <span class="college-text"><strong>St. Vincent Pallotti College of Engg. &amp; Tech.</strong> &bull; Dept. of Information Technology</span>
+      </div>
+      <div class="banner-right">
+        <span>DBMS (24IT501T) | Session 2026-27</span>
+        <span class="divider">|</span>
+        <span>Student: <strong>Vedant V Chaudhari</strong> (UID: 24010011)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Navigation Header -->
+  <header class="main-header">
+    <div class="header-container">
+      <div class="brand-section">
+        <div class="brand-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <path d="M16 10a4 4 0 0 1-8 0"></path>
+          </svg>
+        </div>
+        <div>
+          <h1 class="brand-title">E-Commerce Management System</h1>
+          <p class="brand-subtitle">Relational PostgreSQL Database &middot; Web Portal &amp; Transaction Engine</p>
+        </div>
+      </div>
+
+      <!-- Cloud DB Status Pill -->
+      <div class="header-actions">
+        <div class="db-status-pill <%= dbInfo.type === 'postgres' ? 'connected' : 'mock' %>" onclick="openCloudModal()">
+          <span class="status-dot"></span>
+          <div class="status-info">
+            <span class="status-label"><%= dbInfo.type === 'postgres' ? 'Cloud PostgreSQL Live' : 'Preview Mode' %></span>
+            <span class="status-host"><%= dbInfo.host ? (dbInfo.host.length > 25 ? dbInfo.host.substring(0, 22) + '...' : dbInfo.host) : 'Connect Cloud DB' %></span>
+          </div>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
+        </div>
+
+        <button class="btn btn-primary" onclick="openOrderModal()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
+          Place Order
+        </button>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs-wrapper">
+      <div class="nav-tabs-container">
+        <a href="#dashboard-section" class="nav-tab active" data-target="dashboard-section">📊 Dashboard</a>
+        <a href="#products-section" class="nav-tab" data-target="products-section">🛍️ Catalogue (<%= totalProducts %>)</a>
+        <a href="#orders-section" class="nav-tab" data-target="orders-section">📦 Orders (<%= totalOrders %>)</a>
+        <a href="#customers-section" class="nav-tab" data-target="customers-section">👥 Customers (<%= totalCustomers %>)</a>
+        <a href="#queries-section" class="nav-tab" data-target="queries-section">🔬 SQL Lab (8.1 - 8.10)</a>
+        <a href="#schema-section" class="nav-tab" data-target="schema-section">📐 Schema &amp; ER Model</a>
+        <a href="#cloud-section" class="nav-tab" data-target="cloud-section">☁️ Cloud Deployment</a>
+      </div>
+    </nav>
+  </header>
+
